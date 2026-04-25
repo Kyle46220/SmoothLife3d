@@ -16,6 +16,18 @@ Because the app is plain static assets (`index.html`, `styles.css`, `src/main.js
 - **Netlify Git deploy**: connect your fork, set build command to empty, publish directory to `.`.
 - **Any static host**: GitHub Pages, Vercel static, Cloudflare Pages, etc.
 
+
+### One-click GitHub Pages
+
+This repo includes a workflow at `.github/workflows/pages.yml` that deploys automatically to GitHub Pages on every push to `main`.
+
+To enable it:
+
+1. Push this repository to GitHub.
+2. Go to **Settings → Pages**.
+3. Set **Source** to **GitHub Actions**.
+4. Push to `main` (or run the workflow manually from **Actions**).
+
 ## Local run
 
 From repository root:

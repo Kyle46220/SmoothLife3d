@@ -53,7 +53,7 @@ http://localhost:8080
 
 - `index.html`: UI shell and canvas.
 - `styles.css`: HUD + page styling.
-- `src/main.js`: self-contained 3D simulation + canvas renderer (no external runtime dependencies).
+- `src/main.js`: 3D simulation and rendering (Three.js via CDN).
 - `smoothlife.py`: original 2D Python implementation from upstream kept for reference.
 
 ## Legacy notes from upstream

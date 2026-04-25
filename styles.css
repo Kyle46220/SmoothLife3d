@@ -1,0 +1,71 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #1f2a40, #090d16 45%, #05070d);
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  z-index: 10;
+  left: 1rem;
+  top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(8, 10, 17, 0.65);
+  border: 1px solid rgba(145, 168, 247, 0.25);
+  border-radius: 0.65rem;
+  backdrop-filter: blur(8px);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+p {
+  margin: 0.3rem 0 0;
+  color: #c4c9e6;
+  font-size: 0.8rem;
+}
+
+.stats {
+  margin-top: 0.55rem;
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: #d7ddff;
+}
+
+.controls {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+button {
+  border: 1px solid rgba(145, 168, 247, 0.35);
+  border-radius: 0.5rem;
+  background: rgba(31, 43, 80, 0.55);
+  color: #ecf0ff;
+  padding: 0.4rem 0.58rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(66, 88, 160, 0.55);
+}

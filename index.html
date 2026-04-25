@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmoothLife 3D</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="hud">
+      <h1>SmoothLife 3D</h1>
+      <p>Drag to orbit · Scroll to zoom · Space to pause</p>
+      <div class="stats">
+        <span id="generation">Generation: 0</span>
+        <span id="fill">Fill: 0%</span>
+      </div>
+      <div class="controls">
+        <button id="randomize">Randomize</button>
+        <button id="pause">Pause</button>
+      </div>
+    </div>
+    <canvas id="app"></canvas>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

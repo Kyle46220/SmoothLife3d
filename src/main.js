@@ -1,8 +1,11 @@
-const SIZE = 28;
-const CELL_SCALE = 0.28;
-const ALIVE_THRESHOLD = 0.2;
+import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
 
-// SmoothLife-like parameters adapted to 3D shell neighborhoods.
+const SIZE = 28;
+const CELL_SCALE = 0.25;
+const ALIVE_THRESHOLD = 0.22;
+
+// SmoothLife-like parameters (adapted for 3D shell sampling)
 const B1 = 0.26;
 const B2 = 0.36;
 const D1 = 0.29;
@@ -12,41 +15,46 @@ const M_ALPHA = 0.12;
 const DT = 0.34;
 
 const canvas = document.querySelector('#app');
-if (!canvas) {
-  throw new Error('SmoothLife 3D: missing #app canvas element.');
-}
-
-const ctx = canvas.getContext('2d');
-if (!ctx) {
-  throw new Error('SmoothLife 3D: 2D canvas context unavailable in this browser.');
-}
-
 const generationEl = document.querySelector('#generation');
 const fillEl = document.querySelector('#fill');
 const pauseBtn = document.querySelector('#pause');
 const randomizeBtn = document.querySelector('#randomize');
 
-if (!generationEl || !fillEl || !pauseBtn || !randomizeBtn) {
-  throw new Error('SmoothLife 3D: expected HUD controls are missing from DOM.');
-}
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-let width = window.innerWidth;
-let height = window.innerHeight;
-let centerX = width / 2;
-let centerY = height / 2;
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x070b14, 0.055);
 
-function resizeCanvas() {
-  width = window.innerWidth;
-  height = window.innerHeight;
-  centerX = width / 2;
-  centerY = height / 2;
-  canvas.width = Math.floor(width * Math.min(window.devicePixelRatio, 2));
-  canvas.height = Math.floor(height * Math.min(window.devicePixelRatio, 2));
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-}
-resizeCanvas();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(10, 9, 10);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xa9b5ff, 0.62));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+keyLight.position.set(8, 10, 5);
+scene.add(keyLight);
+
+const geometry = new THREE.BoxGeometry(CELL_SCALE, CELL_SCALE, CELL_SCALE);
+const material = new THREE.MeshStandardMaterial({
+  color: 0x7fc3ff,
+  transparent: true,
+  opacity: 0.9,
+  emissive: 0x2550ff,
+  emissiveIntensity: 0.38,
+  roughness: 0.65,
+  metalness: 0.05,
+});
+
+const maxInstances = SIZE ** 3;
+const mesh = new THREE.InstancedMesh(geometry, material, maxInstances);
+mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(mesh);
 
 const outerOffsets = [];
 const innerOffsets = [];
@@ -67,7 +75,6 @@ const innerOffsets = [];
   }
 })();
 
-const maxInstances = SIZE ** 3;
 let current = new Float32Array(maxInstances);
 let next = new Float32Array(maxInstances);
 let generation = 0;
@@ -95,7 +102,7 @@ function mix(a, b, t) {
 
 function randomizeField() {
   for (let i = 0; i < current.length; i += 1) {
-    current[i] = Math.random() > 0.76 ? 1 : Math.random() * 0.08;
+    current[i] = Math.random() > 0.76 ? 1 : Math.random() * 0.05;
   }
   generation = 0;
 }
@@ -125,145 +132,41 @@ function stepSimulation() {
         const t2 = mix(B2, D2, aliveness);
         const transition = logisticInterval(n, t1, t2, N_ALPHA);
 
-        const cell = idx(x, y, z);
-        next[cell] = Math.min(1, Math.max(0, current[cell] + DT * (transition - current[cell])));
+        const iCell = idx(x, y, z);
+        next[iCell] = Math.min(1, Math.max(0, current[iCell] + DT * (transition - current[iCell])));
       }
     }
   }
+
   [current, next] = [next, current];
   generation += 1;
 }
 
-const camera = {
-  radius: 16,
-  theta: 0.8,
-  phi: 0.95,
-};
-let dragging = false;
-let lastX = 0;
-let lastY = 0;
+const tempMatrix = new THREE.Matrix4();
+const tempPosition = new THREE.Vector3();
 
-canvas.addEventListener('pointerdown', (ev) => {
-  dragging = true;
-  lastX = ev.clientX;
-  lastY = ev.clientY;
-  canvas.setPointerCapture(ev.pointerId);
-});
-
-canvas.addEventListener('pointerup', (ev) => {
-  dragging = false;
-  if (canvas.hasPointerCapture && canvas.hasPointerCapture(ev.pointerId)) {
-    canvas.releasePointerCapture(ev.pointerId);
-  }
-});
-
-canvas.addEventListener('pointercancel', () => {
-  dragging = false;
-});
-
-canvas.addEventListener('pointermove', (ev) => {
-  if (!dragging) return;
-  const dx = ev.clientX - lastX;
-  const dy = ev.clientY - lastY;
-  lastX = ev.clientX;
-  lastY = ev.clientY;
-  camera.theta -= dx * 0.005;
-  camera.phi = Math.min(Math.PI - 0.06, Math.max(0.06, camera.phi + dy * 0.005));
-});
-
-canvas.addEventListener('wheel', (ev) => {
-  ev.preventDefault();
-  camera.radius = Math.min(38, Math.max(8, camera.radius + ev.deltaY * 0.01));
-}, { passive: false });
-
-function getCameraBasis() {
-  const sinPhi = Math.sin(camera.phi);
-  const cosPhi = Math.cos(camera.phi);
-  const sinTheta = Math.sin(camera.theta);
-  const cosTheta = Math.cos(camera.theta);
-
-  const camPos = {
-    x: camera.radius * sinPhi * cosTheta,
-    y: camera.radius * cosPhi,
-    z: camera.radius * sinPhi * sinTheta,
-  };
-
-  const fwd = {
-    x: -camPos.x / camera.radius,
-    y: -camPos.y / camera.radius,
-    z: -camPos.z / camera.radius,
-  };
-
-  const worldUp = { x: 0, y: 1, z: 0 };
-  let right = {
-    x: worldUp.y * fwd.z - worldUp.z * fwd.y,
-    y: worldUp.z * fwd.x - worldUp.x * fwd.z,
-    z: worldUp.x * fwd.y - worldUp.y * fwd.x,
-  };
-
-  const rightLen = Math.hypot(right.x, right.y, right.z) || 1;
-  right = { x: right.x / rightLen, y: right.y / rightLen, z: right.z / rightLen };
-
-  const up = {
-    x: fwd.y * right.z - fwd.z * right.y,
-    y: fwd.z * right.x - fwd.x * right.z,
-    z: fwd.x * right.y - fwd.y * right.x,
-  };
-
-  return { camPos, right, up, fwd };
-}
-
-function drawFrame() {
-  ctx.fillStyle = '#070c17';
-  ctx.fillRect(0, 0, width, height);
-
-  const { camPos, right, up, fwd } = getCameraBasis();
-  const points = [];
-  const f = Math.min(width, height) * 0.82;
+function updateInstancedMesh() {
   let visibleCount = 0;
-
   for (let z = 0; z < SIZE; z += 1) {
     for (let y = 0; y < SIZE; y += 1) {
       for (let x = 0; x < SIZE; x += 1) {
         const value = current[idx(x, y, z)];
         if (value <= ALIVE_THRESHOLD) continue;
 
-        const px = (x - SIZE / 2) * CELL_SCALE;
-        const py = (y - SIZE / 2) * CELL_SCALE;
-        const pz = (z - SIZE / 2) * CELL_SCALE;
-
-        const vx = px - camPos.x;
-        const vy = py - camPos.y;
-        const vz = pz - camPos.z;
-
-        const cx = vx * right.x + vy * right.y + vz * right.z;
-        const cy = vx * up.x + vy * up.y + vz * up.z;
-        const cz = vx * fwd.x + vy * fwd.y + vz * fwd.z;
-
-        if (cz <= 0.05) continue;
-
-        const sx = centerX + (cx / cz) * f;
-        const sy = centerY - (cy / cz) * f;
-        const radius = Math.max(0.6, (CELL_SCALE * f * 0.55) / cz);
-
-        points.push({ sx, sy, cz, radius, value });
+        tempPosition.set(
+          (x - SIZE / 2) * CELL_SCALE,
+          (y - SIZE / 2) * CELL_SCALE,
+          (z - SIZE / 2) * CELL_SCALE,
+        );
+        tempMatrix.makeTranslation(tempPosition.x, tempPosition.y, tempPosition.z);
+        mesh.setMatrixAt(visibleCount, tempMatrix);
         visibleCount += 1;
       }
     }
   }
 
-  points.sort((a, b) => b.cz - a.cz);
-
-  for (let i = 0; i < points.length; i += 1) {
-    const p = points[i];
-    const glow = Math.min(1, p.value + 0.2);
-    const alpha = Math.min(0.95, 0.2 + p.value * 0.85);
-
-    ctx.beginPath();
-    ctx.fillStyle = `rgba(${Math.floor(70 + 120 * glow)}, ${Math.floor(140 + 95 * glow)}, 255, ${alpha})`;
-    ctx.arc(p.sx, p.sy, p.radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  mesh.count = visibleCount;
+  mesh.instanceMatrix.needsUpdate = true;
 
   generationEl.textContent = `Generation: ${generation}`;
   fillEl.textContent = `Fill: ${((visibleCount / maxInstances) * 100).toFixed(1)}%`;
@@ -276,7 +179,7 @@ pauseBtn.addEventListener('click', () => {
 
 randomizeBtn.addEventListener('click', () => {
   randomizeField();
-  drawFrame();
+  updateInstancedMesh();
 });
 
 window.addEventListener('keydown', (ev) => {
@@ -288,12 +191,13 @@ window.addEventListener('keydown', (ev) => {
 });
 
 window.addEventListener('resize', () => {
-  resizeCanvas();
-  drawFrame();
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 randomizeField();
-drawFrame();
+updateInstancedMesh();
 
 let accumulator = 0;
 let lastTime = performance.now();
@@ -308,8 +212,10 @@ function animate(now) {
       stepSimulation();
       accumulator -= 33;
     }
+    updateInstancedMesh();
   }
 
-  drawFrame();
+  controls.update();
+  renderer.render(scene, camera);
 }
 requestAnimationFrame(animate);
